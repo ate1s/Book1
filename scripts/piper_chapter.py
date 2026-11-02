@@ -19,14 +19,14 @@ def main():
     parser.add_argument("--voice",choices=list(VOICES),default="narrator")
     args=parser.parse_args()
     text=read_source(args.text)
-    paragraphs=[re.sub(r"\\s+"," ",p).strip() for p in re.split(r"\\n\\s*\\n",text) if p.strip()]
+    paragraphs=[re.sub(r"\s+"," ",p).strip() for p in re.split(r"\n\s*\n",text) if p.strip()]
     if not paragraphs: raise SystemExit("Empty chapter")
     out=Path(args.output);out.mkdir(parents=True,exist_ok=True)
     model=VOICES[args.voice]
     clips=[];events=[];cursor=0.0
     for idx,paragraph in enumerate(paragraphs,1):
         # Limit long paragraphs to keep synthesis reliable.
-        parts=re.findall(r".{1,320}(?:[.!?…](?=\\s|$)|$)",paragraph)
+        parts=re.findall(r".{1,320}(?:[.!?…](?=\s|$)|$)",paragraph)
         if not parts: parts=[paragraph]
         for part in parts:
             part=part.strip()
@@ -40,7 +40,7 @@ def main():
             clips.append(clip)
     # WAV concat by ffmpeg filter: re-encode to consistent PCM
     concat=out/"clips.txt"
-    concat.write_text("".join("file '"+p.name+"'\\n" for p in clips),encoding="utf-8")
+    concat.write_text("".join("file '"+p.name+"'\n" for p in clips),encoding="utf-8")
     wav=out/"chapter01.wav"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-f","concat","-safe","0","-i",str(concat),"-ar","22050","-ac","1","-c:a","pcm_s16le",str(wav)],check=True)
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",str(wav),"-c:a","aac","-b:a","128k",str(out/"chapter01.m4a")],check=True)
