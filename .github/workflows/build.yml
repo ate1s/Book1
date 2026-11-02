@@ -2,8 +2,12 @@ name: Build video comic
 on:
   workflow_dispatch:
     inputs:
+      demo:
+        description: Run synthetic demo
+        type: boolean
+        default: true
       timeline:
-        description: Path to timeline JSON
+        description: Timeline JSON path
         required: true
         default: scenes/example.json
 jobs:
@@ -11,11 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - name: Render video
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install -r requirements.txt
+      - name: Generate test assets
+        if: inputs.demo
+        run: python scripts/make_demo.py
+      - name: Render demo
+        if: inputs.demo
+        run: python scripts/build.py --timeline demo/timeline.json --output output/demo.mp4
+      - name: Render real chapter
+        if: ${{ !inputs.demo }}
         run: python scripts/build.py --timeline "${{ inputs.timeline }}" --output output/chapter.mp4
       - uses: actions/upload-artifact@v4
         with:
           name: video-comic
-          path: output/chapter.mp4
+          path: output/*.mp4
