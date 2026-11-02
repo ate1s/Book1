@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'scripts/piper_cast.py'
+      - 'scenes/chapter01_speaker_overrides.json'
       - '.github/workflows/piper-cast.yml'
   workflow_dispatch:
     inputs:
@@ -29,15 +30,15 @@ jobs:
           mkdir -p voices
           python -m piper.download_voices --download-dir voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
       - name: Demo text
-        if: github.event_name == 'push' || inputs.demo
+        if: github.event_name == 'workflow_dispatch' && inputs.demo
         run: |
           mkdir -p input
           printf 'Глава первая.\n\nАлександр смотрел на лампу.\n\n– Я Эжен. Нехило тебя приложили.\n\n– Иниго, – подал голос парень.\n' > input/demo.txt
       - name: Render demo
-        if: github.event_name == 'push' || inputs.demo
+        if: github.event_name == 'workflow_dispatch' && inputs.demo
         run: python scripts/piper_cast.py --text input/demo.txt
       - name: Render chapter from secret
-        if: github.event_name == 'workflow_dispatch' && !inputs.demo
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.demo)
         env:
           CHAPTER_TEXT_GZIP_B64: ${{ secrets.CHAPTER_TEXT_GZIP_B64 }}
         run: python scripts/piper_cast.py
