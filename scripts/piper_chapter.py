@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Render Russian speech with OHF Piper. Source stays in Actions secret."""
 import argparse, base64, gzip, json, os, re, subprocess, wave
+from piper import PiperVoice
 from pathlib import Path
 VOICES={"narrator":"ru_RU-dmitri-medium","eugene":"ru_RU-ruslan-medium","other":"ru_RU-irina-medium"}
 def main():
@@ -21,14 +22,15 @@ def main():
     model=Path("voices")/(VOICES[args.voice]+".onnx")
     if not model.is_file(): raise SystemExit(f"Missing voice model: {model}")
     segments=[];clips=[];cursor=0.0
+    voice=PiperVoice.load(str(model))
     for para in paragraphs:
         # Split at sentence boundaries, retain every word.
         sentences=re.split(r"(?<=[.!?…])\s+",para)
         for sentence in sentences:
             if not sentence.strip(): continue
             clip=out/f"clip_{len(clips)+1:04}.wav"
-            subprocess.run(["python","-m","piper","--model",str(model),"--output_file",str(clip)],
-                           input=sentence.strip()+"\n",text=True,check=True)
+            with wave.open(str(clip),"wb") as audio:
+                voice.synthesize_wav(sentence.strip(),audio)
             with wave.open(str(clip),"rb") as f:
                 duration=f.getnframes()/f.getframerate()
             segments.append({"index":len(segments)+1,"start":round(cursor,3),"end":round(cursor+duration,3),"voice":args.voice,"text":sentence.strip()})
