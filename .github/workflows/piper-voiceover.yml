@@ -13,10 +13,7 @@ on:
       voice:
         description: Voice model
         type: choice
-        options:
-          - narrator
-          - eugene
-          - other
+        options: [narrator, eugene, other]
         default: narrator
 jobs:
   piper-tts:
@@ -27,24 +24,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install OHF Piper and ffmpeg
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          python -m pip install --upgrade pip
           python -m pip install piper-tts
-      - name: Download Russian voices
+      - name: Download OHF Piper voices
         run: |
-          python -m piper.download_voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
-      - name: Create demo source
+          mkdir -p voices
+          python -m piper.download_voices --download-dir voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
+      - name: Create smoke test
         if: github.event_name == 'push' || inputs.demo
         run: |
           mkdir -p input
           printf 'Александр открыл глаза. В грузовике было душно.\n\nЭжен поправил очки и посмотрел на лампу.\n' > input/demo.txt
-      - name: Synthesize demo
+      - name: Render demo
         if: github.event_name == 'push' || inputs.demo
         run: python scripts/piper_chapter.py --text input/demo.txt --voice narrator
-      - name: Synthesize private chapter
+      - name: Render full chapter from private secret
         if: github.event_name == 'workflow_dispatch' && !inputs.demo
         env:
           CHAPTER_TEXT_GZIP_B64: ${{ secrets.CHAPTER_TEXT_GZIP_B64 }}
@@ -56,4 +53,5 @@ jobs:
             output/piper_chapter01/chapter01.wav
             output/piper_chapter01/chapter01.m4a
             output/piper_chapter01/timing.json
+          if-no-files-found: error
           retention-days: 7
