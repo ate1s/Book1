@@ -1,0 +1,53 @@
+name: OHF Piper — Character Cast
+on:
+  push:
+    paths:
+      - 'scripts/piper_cast.py'
+      - '.github/workflows/piper-cast.yml'
+  workflow_dispatch:
+    inputs:
+      demo:
+        description: Short test (false = full chapter from secret)
+        type: boolean
+        default: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install piper-tts
+      - name: Download models
+        run: |
+          mkdir -p voices
+          python -m piper.download_voices --download-dir voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
+      - name: Demo text
+        if: github.event_name == 'push' || inputs.demo
+        run: |
+          mkdir -p input
+          printf 'Глава первая.\n\nАлександр смотрел на лампу.\n\n– Я Эжен. Нехило тебя приложили.\n\n– Иниго, – подал голос парень.\n' > input/demo.txt
+      - name: Render demo
+        if: github.event_name == 'push' || inputs.demo
+        run: python scripts/piper_cast.py --text input/demo.txt
+      - name: Render chapter from secret
+        if: github.event_name == 'workflow_dispatch' && !inputs.demo
+        env:
+          CHAPTER_TEXT_GZIP_B64: ${{ secrets.CHAPTER_TEXT_GZIP_B64 }}
+        run: python scripts/piper_cast.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chapter01-character-cast
+          path: |
+            output/piper_chapter01/chapter01.wav
+            output/piper_chapter01/chapter01.m4a
+            output/piper_chapter01/timing.json
+            output/piper_chapter01/speaker_review.json
+          if-no-files-found: error
+          retention-days: 7
