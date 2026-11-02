@@ -7,7 +7,7 @@ VOICES={"narrator":"ru_RU-dmitri-medium","eugene":"ru_RU-ruslan-medium","other":
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--text")
-    p.add_argument("--voice",choices=VOICES,default="narrator")
+    p.add_argument("--voice",choices=[...VOICES,"cast"],default="narrator")
     p.add_argument("--output",default="output/piper_chapter01")
     args=p.parse_args()
     if args.text:
@@ -19,21 +19,37 @@ def main():
     paragraphs=[re.sub(r"\s+"," ",v).strip() for v in re.split(r"\n\s*\n",content) if v.strip()]
     if not paragraphs: raise SystemExit("No paragraphs found")
     out=Path(args.output);out.mkdir(parents=True,exist_ok=True)
-    model=Path("voices")/(VOICES[args.voice]+".onnx")
-    if not model.is_file(): raise SystemExit(f"Missing voice model: {model}")
+    models={k:Path("voices")/(v+".onnx") for k,v in VOICES.items()}
+    required=list(VOICES) if args.voice=="cast" else [args.voice]
+    for name in required:
+        if not models[name].is_file(): raise SystemExit(f"Missing voice model: {models[name]}")
+    voices={name:PiperVoice.load(str(models[name])) for name in required}
     segments=[];clips=[];cursor=0.0
-    voice=PiperVoice.load(str(model))
+    current_speaker="other"
+    def speaker_for(paragraph):
+        nonlocal current_speaker
+        if args.voice!="cast": return args.voice
+        # Conservative tagging: narration stays with narrator.
+        # Direct speech is classified by verified local dialogue context.
+        if not paragraph.lstrip().startswith(("–","—")): return "narrator"
+        line=paragraph.lower()
+        if line.startswith(("– я эжен","— я эжен","– только я его понял","— только я его понял","– рыжий лучше","— рыжий лучше")):
+            return "eugene"
+        if line.startswith(("– александр","— александр")):
+            return "narrator"
+        return "other"
     for para in paragraphs:
+        speaker=speaker_for(para)
         # Split at sentence boundaries, retain every word.
         sentences=re.split(r"(?<=[.!?…])\s+",para)
         for sentence in sentences:
             if not sentence.strip(): continue
             clip=out/f"clip_{len(clips)+1:04}.wav"
             with wave.open(str(clip),"wb") as audio:
-                voice.synthesize_wav(sentence.strip(),audio)
+                voices[speaker].synthesize_wav(sentence.strip(),audio)
             with wave.open(str(clip),"rb") as f:
                 duration=f.getnframes()/f.getframerate()
-            segments.append({"index":len(segments)+1,"start":round(cursor,3),"end":round(cursor+duration,3),"voice":args.voice,"text":sentence.strip()})
+            segments.append({"index":len(segments)+1,"start":round(cursor,3),"end":round(cursor+duration,3),"voice":speaker,"text":sentence.strip()})
             cursor+=duration
             clips.append(clip)
     concat=out/"clips.txt"
@@ -41,6 +57,6 @@ def main():
     wav=out/"chapter01.wav"
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-f","concat","-safe","0","-i",str(concat),"-ac","1","-c:a","pcm_s16le",str(wav)],check=True)
     subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","error","-i",str(wav),"-c:a","aac","-b:a","128k",str(out/"chapter01.m4a")],check=True)
-    (out/"timing.json").write_text(json.dumps({"model":model.name,"duration":round(cursor,3),"segments":segments},ensure_ascii=False,indent=2),encoding="utf-8")
+    (out/"timing.json").write_text(json.dumps({"model":{k:models[k].name for k in required},"duration":round(cursor,3),"segments":segments},ensure_ascii=False,indent=2),encoding="utf-8")
     print(f"Generated {len(clips)} clips, {cursor:.2f} seconds")
 if __name__=="__main__": main()
