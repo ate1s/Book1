@@ -1,0 +1,55 @@
+name: OHF Piper — Russian Chapter Voiceover
+on:
+  workflow_dispatch:
+    inputs:
+      demo:
+        description: Generate demo sample only
+        type: boolean
+        default: true
+      voice:
+        description: Voice model
+        type: choice
+        options:
+          - narrator
+          - eugene
+          - other
+        default: narrator
+jobs:
+  piper-tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OHF Piper and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install piper-tts
+      - name: Download Russian voices
+        run: |
+          python -m piper.download_voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
+      - name: Create demo source
+        if: inputs.demo
+        run: |
+          mkdir -p input
+          printf 'Александр открыл глаза. В грузовике было душно.\n\nЭжен поправил очки и посмотрел на лампу.\n' > input/demo.txt
+      - name: Synthesize demo
+        if: inputs.demo
+        run: python scripts/piper_chapter.py --text input/demo.txt --voice "${{ inputs.voice }}"
+      - name: Synthesize private chapter
+        if: ${{ !inputs.demo }}
+        env:
+          CHAPTER_TEXT_GZIP_B64: ${{ secrets.CHAPTER_TEXT_GZIP_B64 }}
+        run: python scripts/piper_chapter.py --voice "${{ inputs.voice }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: piper-ru-voiceover
+          path: |
+            output/piper_chapter01/chapter01.wav
+            output/piper_chapter01/chapter01.m4a
+            output/piper_chapter01/timing.json
+          retention-days: 7
