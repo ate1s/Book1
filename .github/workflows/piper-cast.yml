@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'scripts/piper_cast.py'
+      - 'scripts/build_shot_manifest.py'
       - 'scenes/chapter01_speaker_overrides.json'
       - '.github/workflows/piper-cast.yml'
   workflow_dispatch:
@@ -56,6 +57,8 @@ jobs:
         env:
           CHAPTER_TEXT_GZIP_B64: ${{ secrets.CHAPTER_TEXT_GZIP_B64 }}
         run: python scripts/piper_cast.py
+      - name: Build timed comic storyboard
+        run: python scripts/build_shot_manifest.py
       - uses: actions/upload-artifact@v4
         with:
           name: chapter01-character-cast
@@ -64,5 +67,6 @@ jobs:
             output/piper_chapter01/chapter01.m4a
             output/piper_chapter01/timing.json
             output/piper_chapter01/speaker_review.json
+            output/piper_chapter01/shot_manifest.json
           if-no-files-found: error
           retention-days: 7
