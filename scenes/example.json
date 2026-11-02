@@ -1,0 +1,18 @@
+{
+  "chapter": "01",
+  "audio": "assets/audio/chapter01.wav",
+  "scenes": [
+    {
+      "start": 0,
+      "end": 5,
+      "image": "assets/images/scene001.jpg",
+      "caption": "Начало"
+    },
+    {
+      "start": 5,
+      "end": 10,
+      "image": "assets/images/scene002.jpg",
+      "caption": "Следующее событие"
+    }
+  ]
+}
