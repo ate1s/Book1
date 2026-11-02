@@ -1,5 +1,9 @@
 name: OHF Piper — Russian Chapter Voiceover
 on:
+  push:
+    paths:
+      - '.github/workflows/piper-voiceover.yml'
+      - 'scripts/piper_chapter.py'
   workflow_dispatch:
     inputs:
       demo:
@@ -33,15 +37,15 @@ jobs:
         run: |
           python -m piper.download_voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
       - name: Create demo source
-        if: inputs.demo
+        if: github.event_name == 'push' || inputs.demo
         run: |
           mkdir -p input
           printf 'Александр открыл глаза. В грузовике было душно.\n\nЭжен поправил очки и посмотрел на лампу.\n' > input/demo.txt
       - name: Synthesize demo
-        if: inputs.demo
-        run: python scripts/piper_chapter.py --text input/demo.txt --voice "${{ inputs.voice }}"
+        if: github.event_name == 'push' || inputs.demo
+        run: python scripts/piper_chapter.py --text input/demo.txt --voice narrator
       - name: Synthesize private chapter
-        if: ${{ !inputs.demo }}
+        if: github.event_name == 'workflow_dispatch' && !inputs.demo
         env:
           CHAPTER_TEXT_GZIP_B64: ${{ secrets.CHAPTER_TEXT_GZIP_B64 }}
         run: python scripts/piper_chapter.py --voice "${{ inputs.voice }}"
