@@ -28,7 +28,21 @@ jobs:
       - name: Download models
         run: |
           mkdir -p voices
-          python -m piper.download_voices --download-dir voices ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium
+          for model in ru_RU-dmitri-medium ru_RU-ruslan-medium ru_RU-irina-medium; do
+            downloaded=0
+            for attempt in 1 2 3 4 5; do
+              echo "Downloading $model (attempt $attempt/5)"
+              if python -m piper.download_voices --download-dir voices "$model"; then
+                downloaded=1
+                break
+              fi
+              sleep $((attempt * 8))
+            done
+            if [ "$downloaded" -ne 1 ]; then
+              echo "::error::Unable to download $model after 5 attempts"
+              exit 1
+            fi
+          done
       - name: Demo text
         if: github.event_name == 'workflow_dispatch' && inputs.demo
         run: |
