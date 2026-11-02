@@ -32,7 +32,7 @@ def main():
             part=part.strip()
             if not part: continue
             clip=out/f"clip_{len(clips)+1:04d}.wav"
-            subprocess.run(["python","-m","piper","-m",model,"-f",str(clip),"--",part],check=True)
+            subprocess.run(["python","-m","piper","-m",model,"-f",str(clip)],input=part,text=True,check=True)
             with wave.open(str(clip),"rb") as wf:
                 duration=wf.getnframes()/wf.getframerate()
             events.append({"index":len(events)+1,"start":round(cursor,3),"end":round(cursor+duration,3),"voice":args.voice,"text":part})
