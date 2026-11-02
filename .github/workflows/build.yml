@@ -1,0 +1,21 @@
+name: Build video comic
+on:
+  workflow_dispatch:
+    inputs:
+      timeline:
+        description: Path to timeline JSON
+        required: true
+        default: scenes/example.json
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Render video
+        run: python scripts/build.py --timeline "${{ inputs.timeline }}" --output output/chapter.mp4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: video-comic
+          path: output/chapter.mp4
