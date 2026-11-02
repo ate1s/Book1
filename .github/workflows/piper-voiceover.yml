@@ -13,8 +13,8 @@ on:
       voice:
         description: Voice model
         type: choice
-        options: [narrator, eugene, other]
-        default: narrator
+        options: [cast, narrator, eugene, other]
+        default: cast
 jobs:
   piper-tts:
     runs-on: ubuntu-latest
